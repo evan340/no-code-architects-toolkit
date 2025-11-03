@@ -26,19 +26,30 @@ logger = logging.getLogger(__name__)
 def upload_to_s3(file_path, s3_url, access_key, secret_key, bucket_name, region):
     # Parse the S3 URL into bucket, region, and endpoint
     #bucket_name, region, endpoint_url = parse_s3_url(s3_url)
-    
+
     session = boto3.Session(
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region
     )
-    
+
     client = session.client('s3', endpoint_url=s3_url)
 
     try:
+        # Detect if this is a Cloudflare R2 endpoint
+        # R2 doesn't support object ACLs, so we skip the ACL parameter
+        is_r2 = 'r2.cloudflarestorage.com' in s3_url.lower()
+
         # Upload the file to the specified S3 bucket
         with open(file_path, 'rb') as data:
-            client.upload_fileobj(data, bucket_name, os.path.basename(file_path), ExtraArgs={'ACL': 'public-read'})
+            if is_r2:
+                # R2: Upload without ACL (bucket-level permissions should be set in R2 dashboard)
+                client.upload_fileobj(data, bucket_name, os.path.basename(file_path))
+                logger.info(f"Uploaded to R2 bucket (no ACL): {bucket_name}")
+            else:
+                # MinIO/S3: Upload with public-read ACL
+                client.upload_fileobj(data, bucket_name, os.path.basename(file_path), ExtraArgs={'ACL': 'public-read'})
+                logger.info(f"Uploaded to S3/MinIO bucket with public-read ACL: {bucket_name}")
 
         # URL encode the filename for the URL
         encoded_filename = quote(os.path.basename(file_path))

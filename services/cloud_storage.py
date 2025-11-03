@@ -87,22 +87,38 @@ class S3CompatibleProvider(CloudStorageProvider):
         return upload_to_s3(file_path, self.endpoint_url, self.access_key, self.secret_key, self.bucket_name, self.region)
 
 def get_storage_provider() -> CloudStorageProvider:
-    
+    """Get the appropriate cloud storage provider based on environment variables.
+
+    Supports:
+    - Cloudflare R2 (S3-compatible, detected by r2.cloudflarestorage.com in endpoint)
+    - DigitalOcean Spaces (detected by digitalocean in endpoint)
+    - Amazon S3 / MinIO / Generic S3-compatible
+    - Google Cloud Storage
+    """
+
     if os.getenv('S3_ENDPOINT_URL'):
+        endpoint_url = os.getenv('S3_ENDPOINT_URL').lower()
 
-        if ('digitalocean' in os.getenv('S3_ENDPOINT_URL').lower()):
-
+        if 'r2.cloudflarestorage.com' in endpoint_url:
+            # Cloudflare R2
+            validate_env_vars('R2')
+            logger.info("Detected Cloudflare R2 storage provider")
+        elif 'digitalocean' in endpoint_url:
+            # DigitalOcean Spaces
             validate_env_vars('S3_DO')
+            logger.info("Detected DigitalOcean Spaces storage provider")
         else:
+            # Generic S3-compatible (MinIO, AWS S3, etc.)
             validate_env_vars('S3')
+            logger.info("Detected S3-compatible storage provider")
 
         return S3CompatibleProvider()
-    
-    if os.getenv('GCP_BUCKET_NAME'):
 
+    if os.getenv('GCP_BUCKET_NAME'):
         validate_env_vars('GCP')
+        logger.info("Detected Google Cloud Storage provider")
         return GCPStorageProvider()
-    
+
     raise ValueError(f"No cloud storage settings provided.")
 
 def upload_file(file_path: str) -> str:
