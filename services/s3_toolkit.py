@@ -38,7 +38,10 @@ def upload_to_s3(file_path, s3_url, access_key, secret_key, bucket_name, region)
     try:
         # Detect if this is a Cloudflare R2 endpoint
         # R2 doesn't support object ACLs, so we skip the ACL parameter
-        is_r2 = 'r2.cloudflarestorage.com' in s3_url.lower()
+        # R2 detection: check endpoint URL OR region code (R2 uses: auto, wnam, enam, weur, eeur, apac)
+        r2_regions = ['auto', 'wnam', 'enam', 'weur', 'eeur', 'apac']
+        is_r2 = ('r2.cloudflarestorage.com' in s3_url.lower() or
+                 (region and region.lower() in r2_regions))
 
         # Upload the file to the specified S3 bucket
         with open(file_path, 'rb') as data:

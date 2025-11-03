@@ -90,7 +90,7 @@ def get_storage_provider() -> CloudStorageProvider:
     """Get the appropriate cloud storage provider based on environment variables.
 
     Supports:
-    - Cloudflare R2 (S3-compatible, detected by r2.cloudflarestorage.com in endpoint)
+    - Cloudflare R2 (S3-compatible, detected by endpoint or region: auto, wnam, enam, weur, eeur, apac)
     - DigitalOcean Spaces (detected by digitalocean in endpoint)
     - Amazon S3 / MinIO / Generic S3-compatible
     - Google Cloud Storage
@@ -98,9 +98,14 @@ def get_storage_provider() -> CloudStorageProvider:
 
     if os.getenv('S3_ENDPOINT_URL'):
         endpoint_url = os.getenv('S3_ENDPOINT_URL').lower()
+        region = os.getenv('S3_REGION', '').lower()
 
-        if 'r2.cloudflarestorage.com' in endpoint_url:
-            # Cloudflare R2
+        # R2 region codes: auto, wnam (Western North America), enam (Eastern North America),
+        # weur (Western Europe), eeur (Eastern Europe), apac (Asia-Pacific)
+        r2_regions = ['auto', 'wnam', 'enam', 'weur', 'eeur', 'apac']
+
+        if 'r2.cloudflarestorage.com' in endpoint_url or region in r2_regions:
+            # Cloudflare R2 (with or without custom domain)
             validate_env_vars('R2')
             logger.info("Detected Cloudflare R2 storage provider")
         elif 'digitalocean' in endpoint_url:
