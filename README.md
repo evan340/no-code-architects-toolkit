@@ -142,9 +142,15 @@ Each endpoint is supported by robust payload validation and detailed API documen
 
 ### S3-Compatible Storage Environment Variables
 
+Supports Amazon S3, MinIO, DigitalOcean Spaces, **Cloudflare R2**, and other S3-compatible services.
+
 #### `S3_ENDPOINT_URL`
 - **Purpose**: Endpoint URL for the S3-compatible service.
 - **Requirement**: Mandatory if using S3-compatible storage.
+- **Examples**:
+  - Cloudflare R2: `https://your-account-id.r2.cloudflarestorage.com`
+  - DigitalOcean Spaces: `https://nyc3.digitaloceanspaces.com`
+  - MinIO: `http://minio:9000` or `https://minio.example.com`
 
 #### `S3_ACCESS_KEY`
 - **Purpose**: The access key for the S3-compatible storage service.
@@ -160,7 +166,10 @@ Each endpoint is supported by robust payload validation and detailed API documen
 
 #### `S3_REGION`
 - **Purpose**: The region for the S3-compatible storage service.
-- **Requirement**: Mandatory if using S3-compatible storage, "None" is acceptible for some s3 providers.
+- **Requirement**: Mandatory if using S3-compatible storage.
+- **Special values**:
+  - Cloudflare R2: Use `auto`
+  - Some providers: Use `None` or any valid region code
 
 ---
 
@@ -213,10 +222,20 @@ Each endpoint is supported by robust payload validation and detailed API documen
    docker run -d -p 8080:8080 \
      # Authentication (required)
      -e API_KEY=your_api_key \
-     
+
      # Cloud storage provider (choose one)
 
-     # s3
+     # Cloudflare R2 (recommended for zero egress fees)
+     #
+     #-e S3_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com \
+     #-e S3_ACCESS_KEY=your_r2_access_key \
+     #-e S3_SECRET_KEY=your_r2_secret_key \
+     #-e S3_BUCKET_NAME=your_bucket_name \
+     #-e S3_REGION=auto \
+
+     # Or
+
+     # DigitalOcean Spaces / MinIO / S3
      #
      #-e S3_ENDPOINT_URL=https://nyc3.digitaloceanspaces.com \
      #-e S3_ACCESS_KEY=your_access_key \
