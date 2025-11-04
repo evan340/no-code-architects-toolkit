@@ -132,16 +132,32 @@ SSL_EMAIL=user@example.com
 # Requirement: Mandatory.
 API_KEY=your_api_key_here
 
-# s3 Compatible Storage Env Vars
+# Cloud Storage Configuration (choose one)
 #
+# OPTION 1: Cloudflare R2 (Recommended - zero egress fees)
+# Important: Use S3_* variable names, NOT AWS_*
+#
+#S3_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com
+#S3_ACCESS_KEY=your_r2_access_key
+#S3_SECRET_KEY=your_r2_secret_key
+#S3_BUCKET_NAME=your-bucket-name
+#S3_REGION=auto
+#
+# For custom domain setup (optional):
+# S3_ENDPOINT_URL=https://cdn.example.com
+# S3_REGION=auto
+#
+# See docs/R2_MIGRATION.md for complete R2 setup guide
+
+# OPTION 2: DigitalOcean Spaces / MinIO / Generic S3
+#
+#S3_ENDPOINT_URL=https://nyc3.digitaloceanspaces.com
 #S3_ACCESS_KEY=your_access_key
 #S3_SECRET_KEY=your_secret_key
-#S3_ENDPOINT_URL=https://your-endpoint-url
-#S3_REGION=your-region
 #S3_BUCKET_NAME=your-bucket-name
+#S3_REGION=nyc3
 
-
-# Google Cloud Storage Env Variables
+# OPTION 3: Google Cloud Storage Env Variables
 #
 # GCP_SA_CREDENTIALS
 # Purpose: The JSON credentials for the GCP Service Account.
@@ -163,7 +179,72 @@ API_KEY=your_api_key_here
 
 ---
 
-## 5. Start Docker Compose
+## 5. Advanced Configuration Options
+
+### Using an Existing Traefik Instance
+
+If you already have Traefik running on your server, you can integrate the NCA Toolkit into your existing setup:
+
+1. **Remove the Traefik service** from your `docker-compose.yml`
+2. **Connect to your existing Traefik network**:
+   ```yaml
+   services:
+     ncat:
+       image: stephengpope/no-code-architects-toolkit:latest
+       env_file:
+         - .env
+       labels:
+         - traefik.enable=true
+         - traefik.http.routers.ncat.rule=Host(`${APP_DOMAIN}`)
+         - traefik.http.routers.ncat.tls=true
+         - traefik.http.routers.ncat.entrypoints=web,websecure
+         - traefik.http.routers.ncat.tls.certresolver=mytlschallenge
+       networks:
+         - your-existing-traefik-network
+       restart: unless-stopped
+
+   networks:
+     your-existing-traefik-network:
+       external: true
+   ```
+
+3. **Adjust labels** to match your Traefik configuration (entry points, cert resolver name, etc.)
+
+### Building Locally vs Using Pre-built Image
+
+The default `docker-compose.yml` uses the pre-built image: `stephengpope/no-code-architects-toolkit:latest`
+
+**When to build locally:**
+- You've made code changes
+- You need a specific version not yet published
+- You're developing or testing features
+
+**To build locally**, modify your `docker-compose.yml`:
+
+```yaml
+services:
+  ncat:
+    build: .  # Build from local Dockerfile
+    # image: stephengpope/no-code-architects-toolkit:latest  # Comment this out
+    env_file:
+      - .env
+    # ... rest of configuration
+```
+
+Then build and start:
+```bash
+docker compose build
+docker compose up -d
+```
+
+**Pre-built image advantages:**
+- Faster deployment (no build time)
+- Tested and verified releases
+- Automatic updates with `docker compose pull`
+
+---
+
+## 6. Start Docker Compose
 
 Start No Code Architect Toolkit  using the following command:
 
@@ -194,7 +275,7 @@ docker compose up -d --force-recreate ncat
 
 ---
 
-## 6. Done
+## 7. Done
 
 No Code Architect Toolkit is now accessible through the specified APP_URL. For example:  
 [https://example.com](https://example.com)

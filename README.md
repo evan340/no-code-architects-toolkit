@@ -171,6 +171,124 @@ Supports Amazon S3, MinIO, DigitalOcean Spaces, **Cloudflare R2**, and other S3-
   - Cloudflare R2: Use `auto`
   - Some providers: Use `None` or any valid region code
 
+#### Cloudflare R2 Setup Guide
+
+Cloudflare R2 is the **recommended** S3-compatible storage option due to zero egress fees and excellent performance. Here's how to set it up:
+
+##### 1. Get Your R2 Credentials
+
+1. **Log in to Cloudflare Dashboard**: https://dash.cloudflare.com/
+2. **Navigate to R2**: Click "R2" in the left sidebar
+3. **Create a Bucket** (if you haven't already):
+   - Click "Create bucket"
+   - Choose a bucket name (e.g., `nca-toolkit-media`)
+   - Select a region: `auto` (recommended) or specific region (wnam, enam, weur, eeur, apac)
+4. **Create API Token**:
+   - Go to "Manage R2 API Tokens"
+   - Click "Create API token"
+   - Choose "Edit" permissions
+   - Copy the **Access Key ID** and **Secret Access Key** (you won't see these again!)
+
+##### 2. Find Your Account ID
+
+Your R2 endpoint URL includes your account ID:
+- Format: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
+- Find it in the Cloudflare Dashboard under "Account ID" in the right sidebar
+- Example: `https://abc123def456.r2.cloudflarestorage.com`
+
+##### 3. Configure Bucket Permissions
+
+R2 uses **bucket-level permissions** (not object-level ACLs like S3):
+
+1. Go to your bucket settings in the R2 dashboard
+2. Under "Settings" → "Public Access", configure:
+   - **For public file access**: Enable "Allow Public Access" and set bucket policy
+   - **For private files**: Leave public access disabled, use signed URLs or custom domains with access controls
+
+Example bucket policy for public read access:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::your-bucket-name/*"
+    }
+  ]
+}
+```
+
+##### 4. Custom Domain Setup (Optional but Recommended)
+
+Custom domains provide cleaner URLs and avoid exposing your account ID:
+
+1. **In R2 Dashboard**:
+   - Go to your bucket → Settings → Custom Domains
+   - Click "Connect Domain"
+   - Enter your custom domain (e.g., `cdn.example.com`)
+   - Note the CNAME record details
+
+2. **In Cloudflare DNS**:
+   - Go to DNS settings for your domain
+   - Add a CNAME record pointing to your R2 bucket
+   - Example: `cdn.example.com` → `your-bucket.r2.cloudflarestorage.com`
+
+3. **Update Environment Variables**:
+   - Use your custom domain as the endpoint URL
+   - Still use R2 region code for detection
+   - Example:
+     ```env
+     S3_ENDPOINT_URL=https://cdn.example.com
+     S3_REGION=auto
+     ```
+
+##### 5. Environment Variable Configuration
+
+Set these environment variables for R2:
+
+```env
+# Cloudflare R2 Configuration
+S3_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com
+# OR use custom domain:
+# S3_ENDPOINT_URL=https://cdn.example.com
+
+S3_ACCESS_KEY=your_r2_access_key_id
+S3_SECRET_KEY=your_r2_secret_access_key
+S3_BUCKET_NAME=your-bucket-name
+S3_REGION=auto
+# Or specific region: wnam, enam, weur, eeur, apac
+```
+
+##### 6. Common R2 Mistakes to Avoid
+
+1. **Wrong Variable Names**:
+   - ❌ `AWS_ACCESS_KEY_ID` → ✅ `S3_ACCESS_KEY`
+   - ❌ `AWS_SECRET_ACCESS_KEY` → ✅ `S3_SECRET_KEY`
+   - ❌ `AWS_ENDPOINT_URL` → ✅ `S3_ENDPOINT_URL`
+
+2. **ACL Errors**: R2 doesn't support object-level ACLs - set permissions at bucket level instead
+
+3. **Region Codes**: R2 uses unique region codes (auto, wnam, enam, weur, eeur, apac) - don't use standard AWS regions
+
+4. **Endpoint URL**: Must include `https://` prefix
+
+##### 7. Testing Your R2 Setup
+
+After configuration, test with:
+
+```bash
+curl -X GET https://your-api-url/v1/toolkit/test \
+  -H "X-API-Key: your_api_key"
+```
+
+The response should include a URL to a file stored in your R2 bucket.
+
+##### 8. Migration from MinIO/S3
+
+See the complete [R2 Migration Guide](docs/R2_MIGRATION.md) for step-by-step instructions on migrating from MinIO or other S3-compatible storage to R2.
+
 ---
 
 ### Google Cloud Storage (GCP) Environment Variables
